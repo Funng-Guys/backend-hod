@@ -1,0 +1,89 @@
+---
+# Play for creating a new Hetzner server on demand
+# With an auto mounted detached storage device
+
+- name: Ensure temp server exists
+  hcloud_server:
+    api_token: "{{ hcloud_token }}"
+    name: "{{ server_id }}.hosting.sys"
+    server_type: "{{ server_type }}"
+    image: "{{ server_iso }}"
+    location: "{{ server_location }}"
+    ssh_keys: ["olof", "philipp"]
+    state: present
+  register: server
+
+- name: Ensure that volume exists
+  hcloud_volume:
+    api_token: "{{ hcloud_token }}"
+    name: "{{ volume_name }}"
+    format: "ext4"
+    size: "{{ volume_size }}"
+    server: "{{ server.hcloud_server.name }}"
+    state: present
+  register: volume
+
+- name: Set variables
+  set_fact:
+    server_ip: "{{ server.hcloud_server.ipv4_address }}"
+
+- name: Ensure volume is mounted
+  delegate_to: "{{ server_ip }}"
+  mount:
+    path: /mnt
+    src: "{{ volume.hcloud_volume.linux_device | default('/dev/sdb') }}"
+    fstype: "ext4"
+    state: mounted
+
+- name: Ensure DNS record
+  cloudflare_dns:
+    zone: "{{ cloudflare_zone }}"
+    record: "{{ server_id }}"
+    type: A
+    value: "{{ server_ip }}"
+    api_token: "{{ cloudflare_token }}"
+    proxied: false
+    state: present
+ 
+- name: Ensure docker repo is installed
+  delegate_to: "{{ server_ip }}"
+  command: "sudo dnf config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo"
+
+- name: Ensure packages are installed
+  delegate_to: "{{ server_ip }}"
+  dnf:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - docker-ce 
+    - docker-ce-cli 
+    - containerd.io
+    - docker-compose-plugin
+
+- name: Ensure docker is running
+  delegate_to: "{{ server_ip }}"
+  service:
+    name: docker
+    enabled: true
+    state: started
+
+- name: Ensure root dir
+  delegate_to: "{{ server_ip }}"
+  file:
+    path: /root
+    owner: root
+    group: root
+    mode: 0750
+
+- name: Template out docker compose
+  delegate_to: "{{ server_ip }}"
+  template:
+    src: docker_compose.yml
+    dest: /root/mc_compose.yml
+    owner: root
+    mode: 0644
+
+- name: Starting server
+  delegate_to: "{{ server_ip }}"
+  command: "docker compose -f /root/mc_compose.yml up -d"
+

@@ -1,0 +1,51 @@
+---
+# Deletes the server
+
+- name: Get all docker containers
+  delegate_to: "{{ server_id + '.' + cloudflare_zone }}"
+  docker_host_info:
+    containers: yes
+  register: container_info
+
+- name: Ensure that all docker containers are off
+  delegate_to: "{{ server_id + '.' + cloudflare_zone }}"
+  docker_container:
+    name: "{{ item }}"
+    state: stopped
+  loop: "{{ container_info.containers | map(attribute='Id') | list }}"
+
+- name: Ensuer that volume is unmounted
+  delegate_to: "{{ server_id + '.' + cloudflare_zone }}"
+  mount:
+    path: /mnt
+    state: absent
+
+- name: Ensure that volume is removed from server
+  hcloud_volume:
+    api_token: "{{ hcloud_token }}"
+    name: "{{ volume_name }}"
+    format: "ext4"
+    size: "{{ volume_size }}"
+    location: "{{ server_location }}"
+    state: present
+ 
+- name: Ensure temp server is removed
+  hcloud_server:
+    api_token: "{{ hcloud_token }}"
+    name: "{{ server_id }}.hosting.sys"
+    server_type: "{{ server_type }}"
+    image: "{{ server_iso }}"
+    location: "{{ server_location }}"
+    state: absent
+  register: server
+
+- name: Ensure DNS record is removed
+  cloudflare_dns:
+    zone: "{{ cloudflare_zone }}"
+    record: "{{ server_id }}"
+    api_token: "{{ cloudflare_token }}"
+    state: absent
+
+- name: Debug server
+  debug: 
+    msg: "{{ server  }}"

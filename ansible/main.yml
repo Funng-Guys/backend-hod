@@ -1,0 +1,29 @@
+---
+- name: Create temp server
+  hosts: localhost
+  gather_facts: false
+  remote_user: root
+  vars:
+    cloudflare_token: "YOUR API KEY"
+    cloudflare_zone: "example.com" # server name + zone = FQDN: test-mc.example.com
+    hcloud_token: "YOUR API KEY"
+    server_iso: "rocky-9"
+    server_id: "test-mc"
+    server_type: "cpx31"
+    server_location: "hel1"
+    volume_name: "mc-volume"
+    volume_size: "10" # 10 is minimum
+  tasks:
+    - name: Create server
+      include_tasks:
+        file: tasks/create.yml
+        apply:
+          tags: create
+      tags: create
+
+    - name: Delete server
+      include_tasks:
+        file: tasks/delete.yml
+        apply:
+          tags: delete
+      tags: delete
