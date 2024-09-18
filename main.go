@@ -22,31 +22,24 @@ type Config struct {
     VolumeSize      string  `mapstructure:"volumeSize"`
 }
 
-func getConfig() (*Config, error) {
-    var config *Config
-
+func getConfig() (config *Config, err error) {
     // basic viper conf
-    v := viper.New()
-    v.AddConfigPath("./")
-    v.SetConfigName("config")
-    v.SetConfigType("yaml")
+    viper.AddConfigPath("./")
+    viper.SetConfigName("config")
+    viper.SetConfigType("yaml")
 
     // overwrite if env variables exists
-    v.AutomaticEnv()
+    viper.AutomaticEnv()
 
-    err := v.ReadInConfig()
+    err = viper.ReadInConfig()
     
     if err != nil {
-        return nil, err
+        return
     }
 
-    err = v.Unmarshal(&config)
+    err = viper.Unmarshal(&config)
     log.Print(config)    
-    if err != nil {
-        return nil, err
-    }
-
-    return config, nil
+    return
 }
 
 func enforceJSONHandler(next http.Handler) http.Handler {
