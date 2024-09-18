@@ -1,0 +1,14 @@
+secret: 123
+
+cloudflareToken: "AAA" # Defined in env file
+cloudflareZone: "example.com" # Defined in env file
+
+hcloudTokan: "BBB" # Defined in env file
+hcloudSSHKeys: ["olof", "philipp"]
+
+serverISO: "rocky-9"
+serverID: "smp-server"
+serverType: "cpx31"
+serverLocation: "hel1"
+volumeName: "mc-volume"
+volumeSize: 10
